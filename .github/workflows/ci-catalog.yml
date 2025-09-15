@@ -12,6 +12,7 @@ on:
       - 'services/catalog/**'
 
 jobs:
+jobs:
   test:
     runs-on: ubuntu-latest
     
@@ -49,10 +50,9 @@ jobs:
       run: dotnet test --no-build -c Release --filter "Category=Unit"
       
     - name: Run integration tests
-      run: dotnet test tests/Catalog.Tests/Catalog.Tests.csproj --no-build -c Release --filter "FullyQualifiedName~Integration"
-      env:
-        DOCKER_HOST: unix:///var/run/docker.sock
-        TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+      run: |
+        export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=marketplace;Username=pguser;Password=pgpass"
+        dotnet test tests/Catalog.Tests/Catalog.Tests.csproj --no-build -c Release --filter "FullyQualifiedName~Integration"
       
     - name: Build Docker image
       run: |
