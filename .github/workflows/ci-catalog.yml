@@ -1,0 +1,59 @@
+name: CI Catalog Service
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'services/catalog/**'
+      - '.github/workflows/ci-catalog.yml'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'services/catalog/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: pguser
+          POSTGRES_PASSWORD: pgpass
+          POSTGRES_DB: marketplace
+        options: >-
+          --health-cmd pg_isready -U pguser -d marketplace
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore -c Release
+      
+    - name: Run unit tests
+      run: dotnet test --no-build -c Release --filter "Category=Unit"
+      
+    - name: Run integration tests
+      run: dotnet test tests/Catalog.Tests/Catalog.Tests.csproj --no-build -c Release --filter "FullyQualifiedName~Integration"
+      env:
+        DOCKER_HOST: unix:///var/run/docker.sock
+        TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+      
+    - name: Build Docker image
+      run: |
+        docker build -f services/catalog/src/Catalog.Api/Dockerfile -t catalog-api:latest .
