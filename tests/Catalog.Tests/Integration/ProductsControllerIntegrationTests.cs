@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 
 namespace Catalog.Tests.Integration
 {
-    // Указываем, что эти тесты принадлежат к коллекции "IntegrationTests"
     [Collection("IntegrationTests")]
     public class ProductsControllerIntegrationTests : IClassFixture<IntegrationTestFixture>
     {
@@ -23,22 +22,29 @@ namespace Catalog.Tests.Integration
         [Fact]
         public async Task FullProductLifecycle_ShouldWork()
         {
-            // Arrange
+            // Arrange - используем валидный SKU без подчеркиваний
             var newProduct = new ProductForCreateDto
             {
-                Sku = "INTEGRATION_TEST_001",
+                Sku = "INTEGRATION-TEST-001", // Заменяем _ на -
                 Name = "Integration Test Product",
                 Description = "Product created during integration testing"
             };
 
             // Act 1: Create Product
             var createResponse = await _httpClient.PostAsJsonAsync("/api/products", newProduct);
+
+            // Если BadRequest, посмотрим что вернулось
+            if (createResponse.StatusCode == HttpStatusCode.BadRequest)
+            {
+                var errorContent = await createResponse.Content.ReadAsStringAsync();
+                throw new Exception($"BadRequest response: {errorContent}");
+            }
+
             var createdProduct = await createResponse.Content.ReadFromJsonAsync<ProductDto>();
 
             // Assert 1: Product was created
             Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
             Assert.NotNull(createdProduct);
-            Assert.NotNull(createdProduct.Id);
             Assert.Equal(newProduct.Sku, createdProduct.Sku);
             Assert.Equal(newProduct.Name, createdProduct.Name);
 
@@ -55,7 +61,7 @@ namespace Catalog.Tests.Integration
             // Act 3: Update Product
             var updateDto = new ProductForCreateDto
             {
-                Sku = "UPDATED_TEST_001",
+                Sku = "UPDATED-TEST-001", // Заменяем _ на -
                 Name = "Updated Integration Test Product",
                 Description = "Updated description"
             };

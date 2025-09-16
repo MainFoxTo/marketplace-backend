@@ -58,7 +58,7 @@ namespace Catalog.Tests
         {
             // Arrange
             var productId = Guid.NewGuid();
-            _mockRepo.Setup(r => r.GetByIdAsync(productId)).ReturnsAsync((Product)null);
+            _mockRepo.Setup(r => r.GetByIdAsync(productId)).ReturnsAsync((Product?)null);
 
             // Act
             var result = await _service.GetByIdAsync(productId);

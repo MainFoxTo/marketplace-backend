@@ -34,7 +34,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker (needed for Testcontainers and docker build)
+      - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
       - name: Setup .NET
@@ -45,8 +45,8 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build
-        run: dotnet build --no-restore -c Release
+      - name: Build application
+        run: dotnet build -c Release services/catalog/src/Catalog.Api/Catalog.Api.csproj
 
       - name: Run unit tests
         run: dotnet test --no-build -c Release --filter "Category=Unit"

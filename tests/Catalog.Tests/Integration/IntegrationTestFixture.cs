@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc.Testing;
+﻿using Catalog.Api;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using Microsoft.VisualStudio.TestPlatform.TestHost;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Testcontainers.PostgreSql;
@@ -14,12 +16,12 @@ namespace Catalog.Tests.Integration
     {
         private readonly PostgreSqlContainer? _dbContainer;
         private readonly bool _usingProvidedConnection;
+
         public HttpClient HttpClient { get; private set; } = null!;
         public string ConnectionString { get; private set; } = null!;
 
         public IntegrationTestFixture()
         {
-            // Если в окружении уже есть строка подключения, будем её использовать (CI / docker-compose).
             var envConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
             if (!string.IsNullOrEmpty(envConn))
             {
@@ -29,7 +31,6 @@ namespace Catalog.Tests.Integration
             }
             else
             {
-                // Иначе подготовим Testcontainers (локально)
                 _usingProvidedConnection = false;
                 _dbContainer = new PostgreSqlBuilder()
                     .WithImage("postgres:15")
@@ -48,17 +49,22 @@ namespace Catalog.Tests.Integration
                 ConnectionString = _dbContainer!.GetConnectionString();
             }
 
-            // Создаем фабрику приложения с подменой строки подключения
+            // Исправленный путь к проекту API
+            var apiProjectPath = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory,
+                "..", "..", "..", "..", "..", "services", "catalog", "src", "Catalog.Api"));
+
             var application = new WebApplicationFactory<Program>()
                 .WithWebHostBuilder(builder =>
                 {
+                    builder.UseContentRoot(apiProjectPath);
+
                     builder.ConfigureAppConfiguration((context, config) =>
                     {
-                        // Переопределяем строку подключения для тестов
-                        config.AddInMemoryCollection(new Dictionary<string, string>
+                        config.AddInMemoryCollection(new Dictionary<string, string?>
                         {
                             ["ConnectionStrings:DefaultConnection"] = ConnectionString
-                        }!);
+                        });
                     });
                 });
 
