@@ -46,15 +46,15 @@ jobs:
         run: dotnet restore
 
       - name: Build application
-        run: dotnet build -c Release services/catalog/src/Catalog.Api/Catalog.Api.csproj
+        run: dotnet build -c Release --no-restore
 
       - name: Run unit tests
-        run: dotnet test --no-build -c Release --filter "Category=Unit"
+        run: dotnet test --no-build -c Release tests/Catalog.Tests/Catalog.Tests.csproj --filter "FullyQualifiedName!~Integration" --verbosity normal
 
       - name: Run integration tests (use postgres service)
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=marketplace;Username=pguser;Password=pgpass"
-        run: dotnet test --no-build -c Release tests/Catalog.Tests/Catalog.Tests.csproj --filter "FullyQualifiedName~Integration"
+        run: dotnet test --no-build -c Release tests/Catalog.Tests/Catalog.Tests.csproj --filter "FullyQualifiedName~Integration" --verbosity normal
 
       - name: Build Docker image
         run: docker build -f services/catalog/src/Catalog.Api/Dockerfile -t catalog-api:latest .
