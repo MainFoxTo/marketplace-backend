@@ -2,8 +2,10 @@
 using Catalog.Api.DTOs;
 using Catalog.Api.Services;
 using Catalog.Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Catalog.Api.Controllers
 {
@@ -32,6 +34,7 @@ namespace Catalog.Api.Controllers
         {
             var product = await _service.GetByIdAsync(id);
             if (product == null) return NotFound(new { message = $"Product with id {id} not found" });
+
             return Ok(_mapper.Map<ProductDto>(product));
         }
 
@@ -76,7 +79,7 @@ namespace Catalog.Api.Controllers
         }
 
         [HttpPost("{id:guid}/versions")]
-        public async Task<IActionResult> AddVersion(Guid id, [FromBody] ProductVersionDto dto)
+        public async Task<IActionResult> AddVersion(Guid id, [FromBody] ProductVersionForCreateDto dto)
         {
             var product = await _service.GetByIdAsync(id);
             if (product == null)
@@ -88,8 +91,8 @@ namespace Catalog.Api.Controllers
             var createdVersion = await _service.AddVersionAsync(version);
 
             return CreatedAtAction(
-                nameof(GetVersions),
-                new { id },
+                nameof(GetVersionById),
+                new { id = id, versionId = createdVersion.Id },
                 _mapper.Map<ProductVersionDto>(createdVersion));
         }
 
@@ -102,6 +105,20 @@ namespace Catalog.Api.Controllers
 
             var versions = await _service.GetVersionsAsync(id);
             return Ok(_mapper.Map<ProductVersionDto[]>(versions));
+        }
+
+        [HttpGet("{id:guid}/versions/{versionId:guid}")]
+        public async Task<IActionResult> GetVersionById(Guid id, Guid versionId)
+        {
+            var product = await _service.GetByIdAsync(id);
+            if (product == null)
+                return NotFound(new { message = $"Product with id {id} not found" });
+
+            var version = await _service.GetVersionByIdAsync(versionId);
+            if (version == null || version.ProductId != id)
+                return NotFound(new { message = $"Version {versionId} not found for product {id}" });
+
+            return Ok(_mapper.Map<ProductVersionDto>(version));
         }
     }
 }

@@ -33,5 +33,8 @@ namespace Catalog.Api.Services
 
         public async Task<IEnumerable<ProductVersion>> GetVersionsAsync(Guid productId) =>
             await _repo.GetVersionsAsync(productId);
+
+        public async Task<ProductVersion?> GetVersionByIdAsync(Guid versionId) =>
+            await _repo.GetVersionByIdAsync(versionId);
     }
 }

@@ -1,4 +1,7 @@
 ﻿using Catalog.Domain.Entities;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Catalog.Api.Services
 {
@@ -12,5 +15,6 @@ namespace Catalog.Api.Services
 
         Task<ProductVersion> AddVersionAsync(ProductVersion v);
         Task<IEnumerable<ProductVersion>> GetVersionsAsync(Guid productId);
+        Task<ProductVersion?> GetVersionByIdAsync(Guid versionId);
     }
 }

@@ -1,9 +1,6 @@
 ﻿using Catalog.Domain.Entities;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Catalog.Domain.Interfaces
@@ -19,9 +16,12 @@ namespace Catalog.Domain.Interfaces
         // Versions
         Task AddVersionAsync(ProductVersion version);
         Task<IEnumerable<ProductVersion>> GetVersionsAsync(Guid productId);
-    }
 
+        // Получить версию по её Id
+        Task<ProductVersion?> GetVersionByIdAsync(Guid versionId);
+    }
 }
+
 //IEnumerable - только чтение(можно перебирать)
 
 //ICollection - чтение + добавление / удаление

@@ -3,35 +3,50 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace Catalog.Tests.Integration
 {
     public class IntegrationTestFixture : IAsyncLifetime
     {
-        private readonly PostgreSqlContainer _dbContainer;
-
-        public IntegrationTestFixture()
-        {
-            // Запускаем контейнер с PostgreSQL
-            _dbContainer = new PostgreSqlBuilder()
-                .WithImage("postgres:15")
-                .WithDatabase("test_db")
-                .WithUsername("postgres")
-                .WithPassword("postgres")
-                .Build();
-        }
-
+        private readonly PostgreSqlContainer? _dbContainer;
+        private readonly bool _usingProvidedConnection;
         public HttpClient HttpClient { get; private set; } = null!;
         public string ConnectionString { get; private set; } = null!;
 
+        public IntegrationTestFixture()
+        {
+            // Если в окружении уже есть строка подключения, будем её использовать (CI / docker-compose).
+            var envConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+            if (!string.IsNullOrEmpty(envConn))
+            {
+                _usingProvidedConnection = true;
+                ConnectionString = envConn;
+                _dbContainer = null;
+            }
+            else
+            {
+                // Иначе подготовим Testcontainers (локально)
+                _usingProvidedConnection = false;
+                _dbContainer = new PostgreSqlBuilder()
+                    .WithImage("postgres:15")
+                    .WithDatabase("test_db")
+                    .WithUsername("postgres")
+                    .WithPassword("postgres")
+                    .Build();
+            }
+        }
+
         public async Task InitializeAsync()
         {
-            await _dbContainer.StartAsync();
-            ConnectionString = _dbContainer.GetConnectionString();
+            if (!_usingProvidedConnection)
+            {
+                await _dbContainer!.StartAsync();
+                ConnectionString = _dbContainer!.GetConnectionString();
+            }
 
             // Создаем фабрику приложения с подменой строки подключения
             var application = new WebApplicationFactory<Program>()
@@ -52,7 +67,11 @@ namespace Catalog.Tests.Integration
 
         public async Task DisposeAsync()
         {
-            await _dbContainer.DisposeAsync();
+            if (!_usingProvidedConnection && _dbContainer != null)
+            {
+                await _dbContainer.DisposeAsync();
+            }
+
             HttpClient?.Dispose();
         }
     }

@@ -1,4 +1,7 @@
-﻿namespace Catalog.Api.DTOs
+﻿using System;
+using System.Collections.Generic;
+
+namespace Catalog.Api.DTOs
 {
     public class ProductDto
     {
@@ -8,5 +11,8 @@
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+
+        // Список версий продукта
+        public List<ProductVersionDto> Versions { get; set; } = new();
     }
 }
