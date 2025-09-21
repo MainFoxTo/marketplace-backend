@@ -34,7 +34,7 @@ namespace Inventory.Tests.Integration
 
             var reserveResponse = await _client.PostAsJsonAsync("/api/inventory/reserve", reserveRequest);
 
-            // Проверяем успешный ответ
+           
             Assert.True(reserveResponse.IsSuccessStatusCode, await reserveResponse.Content.ReadAsStringAsync());
 
             // Проверка доступности после резерва
