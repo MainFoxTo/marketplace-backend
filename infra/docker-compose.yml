@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -7,6 +5,8 @@ services:
       POSTGRES_USER: pguser
       POSTGRES_PASSWORD: pgpass
       POSTGRES_DB: marketplace
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,13 +17,27 @@ services:
 
   catalog-api:
     build:
-      context: ..  
+      context: .. 
       dockerfile: services/catalog/src/Catalog.Api/Dockerfile
     environment:
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=marketplace;Username=pguser;Password=pgpass
       - ASPNETCORE_ENVIRONMENT=Development
     ports:
       - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  inventory-api:
+    build:
+      context: ..  
+      dockerfile: services/inventory/src/Inventory.Api/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=marketplace;Username=pguser;Password=pgpass
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "5001:5001"
     depends_on:
       postgres:
         condition: service_healthy

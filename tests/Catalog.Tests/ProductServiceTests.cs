@@ -93,7 +93,7 @@ namespace Catalog.Tests
             var version = new ProductVersion { Sku = "V1", Price = 99.99m };
             _mockRepo.Setup(r => r.AddVersionAsync(It.IsAny<ProductVersion>())).Returns(Task.CompletedTask);
 
-            // Act
+            // Acts
             var result = await _service.AddVersionAsync(version);
 
             // Assert

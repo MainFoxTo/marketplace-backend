@@ -1,44 +1,82 @@
-var builder = WebApplication.CreateBuilder(args);
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Inventory.Api.Middleware;
+using Inventory.Api.Mapping;
+using Inventory.Application.Interfaces;
+using Inventory.Application.Services;
+using Inventory.Domain.Interfaces;
+using Inventory.Infrastructure;
+using Inventory.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+namespace Inventory.Api
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-app.UseHttpsRedirection();
+            // Serilog
+            builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.Console());
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+            // DB
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? "Host=localhost;Port=5432;Database=marketplace;Username=pguser;Password=pgpass";
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+            builder.Services.AddDbContext<InventoryDbContext>(options =>
+                options.UseNpgsql(connectionString));
 
-app.Run();
+            // Services & Repositories
+            builder.Services.AddScoped<IStockRepository, StockRepository>();
+            builder.Services.AddScoped<IInventoryService, InventoryService>();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+            // AutoMapper & Validators
+            builder.Services.AddAutoMapper(typeof(MappingProfile));
+            builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+            builder.Services.AddFluentValidationAutoValidation();
+            builder.Services.AddFluentValidationClientsideAdapters();
+
+            builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
+            var app = builder.Build();
+
+            // Выполняем миграции ТОЛЬКО если это НЕ тестовое окружение
+            if (!app.Environment.IsEnvironment("Testing"))
+            {
+                using var scope = app.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+                db.Database.Migrate();
+            }
+
+            // Swagger + CORS в Dev
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+                app.UseCors("AllowAll");
+            }
+
+            app.UseRouting();
+
+            // Глобальный обработчик ошибок
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+            app.UseAuthorization();
+            app.MapControllers();
+            app.Run();
+        }
+    }
 }
